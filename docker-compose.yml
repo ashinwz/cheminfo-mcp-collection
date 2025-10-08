@@ -1,0 +1,122 @@
+version: '3.8'
+
+services:
+  pubchem-mcp:
+    build:
+      context: ./PubChem
+      dockerfile: Dockerfile
+    container_name: pubchem-mcp-server
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - cheminfo-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  opentarget-mcp:
+    build:
+      context: ./OpenTarget
+      dockerfile: Dockerfile
+    container_name: opentarget-mcp-server
+    ports:
+      - "8001:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - cheminfo-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  drugbank-mcp:
+    build:
+      context: ./Drugbank
+      dockerfile: Dockerfile
+    container_name: drugbank-mcp-server
+    ports:
+      - "8002:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DRUGBANK_API_KEY=${DRUGBANK_API_KEY}
+    restart: unless-stopped
+    networks:
+      - cheminfo-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  chembl-mcp:
+    build:
+      context: ./ChEMBL
+      dockerfile: Dockerfile
+    container_name: chembl-mcp-server
+    ports:
+      - "8003:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - cheminfo-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  surechembl-mcp:
+    build:
+      context: ./sureChEMBL
+      dockerfile: Dockerfile
+    container_name: surechembl-mcp-server
+    ports:
+      - "8004:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - cheminfo-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  pdb-mcp:
+    build:
+      context: ./PDB
+      dockerfile: Dockerfile
+    container_name: pdb-mcp-server
+    ports:
+      - "8005:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - cheminfo-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  cheminfo-network:
+    driver: bridge
+
