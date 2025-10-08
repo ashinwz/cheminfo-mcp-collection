@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  chembl-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chembl-mcp-server
+    ports:
+      - "8003:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    networks:
+      - chembl-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  chembl-network:
+    driver: bridge
+

@@ -1,0 +1,9 @@
+requests
+bs4
+mcp
+chembl_webresource_client
+fastapi
+uvicorn
+typing-extensions
+starlette
+httpx

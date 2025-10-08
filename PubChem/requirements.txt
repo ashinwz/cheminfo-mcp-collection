@@ -1,0 +1,7 @@
+requests
+bs4 
+mcp 
+pubchempy
+pandas
+uvicorn
+sse-starlette
