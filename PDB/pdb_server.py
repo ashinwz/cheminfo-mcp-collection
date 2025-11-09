@@ -21,6 +21,7 @@ async def health_check(request):
 # PDB API base URLs
 PDB_DATA_API = "https://data.rcsb.org/rest/v1"
 PDB_SEARCH_API = "https://search.rcsb.org/rcsbsearch/v2"
+PDB_GRAPHQL_API = "https://data.rcsb.org/graphql"
 PDB_FILES_BASE = "https://files.rcsb.org/download"
 
 def validate_pdb_id(pdb_id: str) -> bool:
@@ -229,17 +230,113 @@ def get_structure_quality(pdb_id: str) -> Dict[str, Any]:
         return {"error": f"Failed to fetch structure quality: {str(e)}"}
 
 def get_ligands(pdb_id: str) -> Dict[str, Any]:
-    """Get ligand and binding site information for a structure."""
-    pdb_id = pdb_id.lower()
+    """Get ligand and binding site information for a structure using GraphQL API."""
+    pdb_id_upper = pdb_id.upper()
     
     if not validate_pdb_id(pdb_id):
         return {"error": f"Invalid PDB ID format: {pdb_id}"}
     
     try:
-        # Get non-polymer entities (ligands)
-        response = requests.get(f"{PDB_DATA_API}/core/nonpolymer_entity/{pdb_id}", timeout=30)
+        # GraphQL query to fetch nonpolymer entities (ligands)
+        graphql_query = """
+        query getLigands($id: String!) {
+          entry(entry_id: $id) {
+            nonpolymer_entities {
+              rcsb_nonpolymer_entity_container_identifiers {
+                entry_id
+                entity_id
+                auth_asym_ids
+                asym_ids
+                nonpolymer_comp_id
+              }
+              rcsb_nonpolymer_entity_annotation {
+                type
+              }
+              rcsb_nonpolymer_entity {
+                pdbx_description
+              }
+              nonpolymer_comp {
+                chem_comp {
+                  id
+                  formula_weight
+                  name
+                  formula
+                }
+                pdbx_reference_molecule {
+                  prd_id
+                  chem_comp_id
+                  type
+                  name
+                  class
+                }
+                rcsb_chem_comp_descriptor {
+                  InChIKey
+                }
+              }
+              nonpolymer_entity_instances {
+                rcsb_nonpolymer_entity_instance_container_identifiers {
+                  auth_seq_id
+                  auth_asym_id
+                  asym_id
+                  entry_id
+                  entity_id
+                }
+                rcsb_nonpolymer_instance_validation_score {
+                  ranking_model_fit
+                  ranking_model_geometry
+                  average_occupancy
+                  is_subject_of_investigation
+                  is_subject_of_investigation_provenance
+                }
+              }
+            }
+          }
+        }
+        """
+        
+        # Execute GraphQL query
+        response = requests.post(
+            PDB_GRAPHQL_API,
+            json={
+                "query": graphql_query,
+                "variables": {"id": pdb_id_upper}
+            },
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        
+        # Extract ligand information
+        if "data" in data and data["data"] and "entry" in data["data"] and data["data"]["entry"]:
+            entry_data = data["data"]["entry"]
+            nonpolymer_entities = entry_data.get("nonpolymer_entities", [])
+            
+            if not nonpolymer_entities:
+                return {
+                    "pdb_id": pdb_id,
+                    "ligand_count": 0,
+                    "ligands": [],
+                    "message": "No ligands found for this structure"
+                }
+            
+            return {
+                "pdb_id": pdb_id,
+                "ligand_count": len(nonpolymer_entities),
+                "ligands": nonpolymer_entities
+            }
+        else:
+            # Check for GraphQL errors
+            if "errors" in data:
+                error_messages = [err.get("message", "Unknown error") for err in data["errors"]]
+                return {"error": f"GraphQL errors: {', '.join(error_messages)}"}
+            
+            return {
+                "pdb_id": pdb_id,
+                "ligand_count": 0,
+                "ligands": [],
+                "message": "No data returned from GraphQL query"
+            }
     except requests.exceptions.RequestException as e:
         logging.error(f"Error fetching ligands for {pdb_id}: {str(e)}")
         return {"error": f"Failed to fetch ligands: {str(e)}"}
